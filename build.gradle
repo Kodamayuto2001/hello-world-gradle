@@ -1,20 +1,67 @@
-Map<String, String> pluginJava = new HashMap<>();
-pluginJava.put("plugin", "java");
-this.project.apply(pluginJava);
+/*
+    Closure内部の暗黙的な参照先として以下の3つが存在する。
 
-Map<String, String> pluginApplication = new HashMap<>();
-pluginApplication.put("plugin", "application");
-this.project.apply(pluginApplication);
+    this        該当スコープ定義元の参照。Javaのthisと同様。
+    owner       該当Closure定義元の参照。基本的にthisと同様だが、Closureの中にClosureを定義した場合に外部のClosureが参照先となる。
+    delegate    該当Closure内の処理の委譲先。動的に変更することが可能。
+*/
 
-this.project.repositories({ -> 
-    jcenter();
-});
+class Deleg1 {
+    String hello_A() {
+        return "Deleg1 Say hello_A() !!"
+    }
+    String hello_B() {
+        return "Deleg1 Say hello_B() !!"
+    }
+}
 
-this.project.dependencies({ -> 
-    implementation("com.google.guava:guava:28.2-jre");
-    testImplementation("junit:junit:4.12");
-})
+class Deleg2 {
+    String hello_A() {
+        return "Deleg Say hello_A() !!"
+    }
 
-this.project.application({ -> 
-    mainClassName("gradle.sample.App");
-})
+    String hello_B() {
+        return "Deleg2 Say hello_B() !!"
+    }
+}
+
+class Main {
+    void execute() {
+        Closure c = {
+            println "this: ${this.class}"
+            println "owner: ${owner.class}"
+            println "delegate: ${delegate.class}"
+            println hello_A()
+            println hello_B()
+        
+            Closure cc = {
+                println "this: ${this.class}"
+                println "owner: ${owner.class}"
+                println "delegate: ${delegate.class}"
+                println hello_A()
+                println hello_B()
+            }
+
+            println "\n-- execute cc --"
+            cc()
+            println "\n-- execute cc with Deleg2 --"
+            cc.delegate = new Deleg2()
+            cc()
+            println "\n-- execute cc by Closure.DELEGATE_FIRST --"
+            cc.resolveStrategy = Closure.DELEGATE_FIRST
+            cc()
+        }
+
+        println "Start Closure"
+        println "\n-- execute c with Deleg1 --"
+        c.delegate = new Deleg1()
+        c()
+        println "\nEnd Closure"
+    }
+
+    String hello_A() {
+        return "Main Say hello_A() !!"
+    }
+}
+def m = new Main()
+m.execute()
